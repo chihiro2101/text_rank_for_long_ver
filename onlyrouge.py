@@ -61,7 +61,7 @@ def evaluate_rouge(raw_sentences, abstract):
     return rouge_scores
   
 
-def start_run(processID, sub_stories, save_path, order_params):
+def start_run(processID, sub_stories, save_path, word_embeddings):
    
     for example in sub_stories:
         start_time = time.time()
@@ -91,19 +91,9 @@ def start_run(processID, sub_stories, save_path, order_params):
 
         if len(preprocessed_sentences) < 7 or len(preprocessed_abs_sentences_list) < 3:
             continue
-        # Extract word vectors
-        word_embeddings = {}
-        f = open('glove.6B.50d.txt', encoding='utf-8')
-        for line in f:
-            values = line.split()
-            word = values[0]
-            coefs = np.asarray(values[1:], dtype='float32')
-            word_embeddings[word] = coefs
-        f.close()
 
         sentences = preprocessed_sentences.copy()
 
-        #create vectors for sentences.
         sentence_vectors = []
         for i in sentences:
             if len(i) != 0:
@@ -111,7 +101,7 @@ def start_run(processID, sub_stories, save_path, order_params):
             else:
                 v = np.zeros((50,))
             sentence_vectors.append(v)
-        # similarity matrix
+
         sim_mat = np.zeros([len(sentences), len(sentences)])
         for i in range(len(sentences)):
             for j in range(len(sentences)):
@@ -120,7 +110,10 @@ def start_run(processID, sub_stories, save_path, order_params):
         
                 
         nx_graph = nx.from_numpy_array(sim_mat)
-        scores = nx.pagerank(nx_graph) # score of all sentences in article
+        try:
+            scores = nx.pagerank(nx_graph) # score of all sentences in article
+        except Exception:
+            continue
         scores_with_sentences = []
         for i in range(len(raw_sentences)):
             tmp = (raw_sentences[i], scores[i], i)
@@ -135,7 +128,6 @@ def start_run(processID, sub_stories, save_path, order_params):
         
         print('time for processing', time.time() - start_time)
 
-        
         file_name = os.path.join(save_path, example[1] )    
         f = open(file_name,'w', encoding='utf-8')
         for sent in rank_text:
@@ -143,13 +135,13 @@ def start_run(processID, sub_stories, save_path, order_params):
         f.close()
 
     
-def multiprocess(num_process, stories, save_path):
+def multiprocess(num_process, stories, save_path, word_embeddings):
     processes = []
     n = math.floor(len(stories)/5)
     set_of_docs = [stories[i:i + n] for i in range(0, len(stories), n)] 
     for index, sub_stories in enumerate(set_of_docs):
         p = multiprocessing.Process(target=start_run, args=(
-            index,sub_stories, save_path[index], 0))
+            index,sub_stories, save_path[index],word_embeddings))
         processes.append(p)
         p.start()      
     for p in processes:
@@ -173,17 +165,27 @@ def main():
     if not os.path.exists('hyp5'):
         os.makedirs('hyp5')
 
+    word_embeddings = {}
+    f = open('glove.6B.50d.txt', encoding='utf-8')
+    for line in f:
+        values = line.split()
+        word = values[0]
+        coefs = np.asarray(values[1:], dtype='float32')
+        word_embeddings[word] = coefs
+    f.close()
+
     # list of documents
     stories = load_docs(directory)
     start_time = time.time()
     
-    multiprocess(5, stories, save_path)
-    # start_run(1, stories, save_path[0], 0)
+    multiprocess(5, stories, save_path, word_embeddings)
+
+    # start_run(1, stories, save_path[0], word_embeddings)
 
     print("--- %s mins ---" % ((time.time() - start_time)/(60.0*len(stories))))
 
 if __name__ == '__main__':
-    main()  
+    main() 
         
         
      
