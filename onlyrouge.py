@@ -111,7 +111,6 @@ def start_run(processID, sub_stories, save_path, order_params):
             else:
                 v = np.zeros((50,))
             sentence_vectors.append(v)
-
         # similarity matrix
         sim_mat = np.zeros([len(sentences), len(sentences)])
         for i in range(len(sentences)):
