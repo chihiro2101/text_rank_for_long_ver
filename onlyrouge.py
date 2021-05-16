@@ -47,18 +47,6 @@ def clean_text(text):
     if len(check_text.split(" ")) < 4:
         return 'None'
     return text
-
-def evaluate_rouge(raw_sentences, abstract):
-    rouge_scores = []
-    for index, sent in enumerate(raw_sentences):
-        try:
-            rouge = Rouge()
-            scores = rouge.get_scores(sent, abstract, avg=True)
-            rouge1f = scores["rouge-1"]["f"]
-        except Exception:
-            rouge1f = 0 
-        rouge_scores.append((sent, rouge1f, index))
-    return rouge_scores
   
 
 def start_run(processID, sub_stories, save_path, word_embeddings):
